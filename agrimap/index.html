@@ -1,0 +1,1445 @@
+
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AgriMap - Sistem Informasi Lahan Petani</title>
+
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+
+<!-- Library Grafik -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<style>
+*{margin:0;padding:0;box-sizing:border-box;font-family:Arial,sans-serif}
+body{background:#f3f6f2;color:#26352b}
+header{background:#176b3a;color:white;padding:20px 5%;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px}
+header h1{font-size:25px}
+header p{font-size:12px;margin-top:5px}
+button{border:0;border-radius:6px;padding:10px 15px;cursor:pointer;font-weight:bold}
+button:hover{opacity:.85}
+.btn-primary{background:#176b3a;color:white}
+.btn-danger{background:#d94343;color:white}
+.btn-edit{background:#e7a52e;color:#222}
+.btn-logout{background:white;color:#176b3a}
+.container{width:90%;max-width:1350px;margin:25px auto}
+.hidden{display:none!important}
+.login-box{background:white;max-width:430px;margin:55px auto;padding:30px;border-radius:12px;box-shadow:0 3px 15px #00000015}
+.login-box h2{color:#176b3a;margin-bottom:10px}
+.login-box p{color:#666;margin-bottom:15px}
+label{display:block;margin:12px 0 6px;font-weight:bold;font-size:13px}
+input,select{width:100%;padding:11px;border:1px solid #ccc;border-radius:6px;outline-color:#176b3a}
+.login-box button{width:100%;margin-top:20px}
+.demo-info{margin-top:18px;padding:14px;background:#eef7ee;border-radius:8px;font-size:13px;line-height:1.8}
+.menu{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:22px}
+.menu button{background:white;color:#176b3a;border:1px solid #176b3a}
+.menu button.active{background:#176b3a;color:white}
+.card{background:white;padding:22px;border-radius:10px;box-shadow:0 2px 10px #0000000c;margin-bottom:20px}
+.card h2{color:#176b3a;margin-bottom:16px}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:15px;margin-bottom:20px}
+.stat{background:white;padding:20px;border-radius:10px;border-left:5px solid #176b3a}
+.stat h3{font-size:23px;color:#176b3a;margin-bottom:6px}
+.stat p{font-size:13px;color:#555}
+.form-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:5px 18px}
+.form-actions{display:flex;gap:10px;margin-top:18px;flex-wrap:wrap}
+.table-wrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse;min-width:1050px}
+th,td{border-bottom:1px solid #ddd;padding:11px;text-align:left;font-size:12px}
+th{background:#e8f2e9;color:#176b3a}
+.search-box{margin-bottom:15px;max-width:400px}
+.map-area{height:480px;width:100%;border-radius:8px;z-index:1}
+.info-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}
+.info-item{background:#f2f7f2;padding:15px;border-radius:8px;overflow-wrap:anywhere}
+.info-item small{color:#777}
+.info-item h3{margin-top:7px;font-size:15px}
+.solution{background:#eef7ee;border-left:4px solid #176b3a;padding:15px;border-radius:6px;margin-bottom:12px}
+.solution h3{margin-bottom:7px;color:#176b3a}
+.muted{color:#777;font-size:13px}
+.legend-list{display:flex;flex-wrap:wrap;gap:14px;margin-top:15px}
+.legend-item{display:flex;align-items:center;gap:7px;font-size:13px}
+.legend-color{width:16px;height:16px;border-radius:3px}
+.status{background:#eef7ee;padding:12px;border-radius:7px;margin-bottom:15px;font-size:13px}
+.section-title{margin:20px 0 12px;color:#176b3a}
+.subheading{color:#176b3a;margin:20px 0 10px}
+footer{text-align:center;padding:25px;color:#777;font-size:13px}
+.badge{display:inline-block;background:#e4f4e7;color:#176b3a;padding:5px 9px;border-radius:20px;font-size:11px;font-weight:bold}
+
+/* GRAFIK PRODUKSI DAN KEUANGAN */
+.chart-card{
+    background:white;
+    padding:22px;
+    border-radius:10px;
+    box-shadow:0 2px 10px #0000000c;
+    margin-bottom:20px;
+}
+.chart-card h2{
+    color:#176b3a;
+    margin-bottom:10px;
+}
+.chart-container{
+    position:relative;
+    width:100%;
+    height:350px;
+    margin-top:20px;
+}
+.chart-summary{
+    display:grid;
+    grid-template-columns:repeat(auto-fit,minmax(200px,1fr));
+    gap:15px;
+    margin-top:20px;
+}
+.chart-summary-item{
+    padding:17px;
+    background:#eef7ee;
+    border-left:5px solid #176b3a;
+    border-radius:8px;
+}
+.chart-summary-item small{color:#666}
+.chart-summary-item h3{
+    color:#176b3a;
+    margin-top:8px;
+    font-size:21px;
+    overflow-wrap:anywhere;
+}
+
+@media(max-width:700px){
+.stats,.form-grid,.info-grid{grid-template-columns:1fr}
+header{align-items:flex-start}
+.container{width:94%}
+.map-area{height:400px}
+.chart-container{height:280px}
+}
+</style>
+</head>
+
+<body>
+
+<header>
+    <div>
+        <h1>🌱 AgriMap</h1>
+        <p>Sistem Informasi Pemetaan dan Analisis Lahan Pertanian</p>
+    </div>
+    <button id="logoutButton" class="btn-logout hidden" onclick="logout()">Keluar</button>
+</header>
+
+<!-- LOGIN -->
+<section id="loginPage" class="login-box">
+    <h2>Masuk AgriMap</h2>
+    <p>Silakan masuk menggunakan akun admin atau petani.</p>
+
+    <form id="loginForm">
+        <label>Username</label>
+        <input type="text" id="loginId" placeholder="Masukkan username" required>
+
+        <label>Password</label>
+        <input type="password" id="loginPassword" placeholder="Masukkan password" required>
+
+        <button type="submit" class="btn-primary">Masuk</button>
+    </form>
+
+    <div class="demo-info">
+        <b>Login Admin</b><br>
+        Username: admin<br>
+        Password: admin123
+        <hr style="margin:10px 0">
+        <b>Akun Petani</b><br>
+        Minarko: minarko / Minarko2026<br>
+        Fahid: fahid / Fahid2026<br>
+        Oktami: oktami / Oktami2026<br>
+        Herman: herman / Herman2026<br>
+        Syarifah: syarifah / Syarifah2026
+    </div>
+</section>
+
+<!-- ADMIN -->
+<main id="adminPage" class="container hidden">
+
+<h2 style="margin-bottom:20px">Dashboard Admin AgriMap</h2>
+
+<div class="menu">
+    <button class="active" onclick="showAdminTab('data',this)">Data Petani</button>
+    <button onclick="showAdminTab('peta',this)">Peta Lahan</button>
+    <button onclick="showAdminTab('produksi',this)">Produksi & Keuangan</button>
+</div>
+
+<!-- STATISTIK -->
+<section id="adminData">
+
+<div class="stats">
+    <div class="stat"><h3 id="totalFarmers">5</h3><p>Total Petani</p></div>
+    <div class="stat"><h3 id="totalArea">4.25</h3><p>Total Luas Lahan (Ha)</p></div>
+    <div class="stat"><h3 id="totalCrops">1</h3><p>Jenis Komoditas</p></div>
+    <div class="stat"><h3 id="totalPlants">4.500</h3><p>Jumlah Tanaman</p></div>
+    <div class="stat"><h3 id="totalProduction">11.500</h3><p>Produksi Bulanan (Kg)</p></div>
+    <div class="stat"><h3 id="totalProfit">Rp114 Juta</h3><p>Total Laba Kotor/Bulan</p></div>
+</div>
+
+<!-- FORM -->
+<div class="card">
+<h2 id="formTitle">Tambah Data Petani</h2>
+<p class="muted">Formulir untuk menambah atau memperbarui data petani dan usaha tani.</p>
+
+<form id="farmerForm">
+
+<h3 class="subheading">A. Identitas dan Lahan</h3>
+<div class="form-grid">
+
+<div><label>ID Anggota</label><input id="newId" required placeholder="PET-006"></div>
+<div><label>Username</label><input id="newUsername" required></div>
+<div><label>Nama Petani</label><input id="newName" required></div>
+<div><label>Wilayah Lahan</label><input id="newLocation" required></div>
+<div><label>Luas Lahan (Ha)</label><input id="newArea" type="number" min="0.01" step="0.01" required></div>
+<div><label>Jenis Komoditas</label><select id="newCrop"><option value="Pepaya">Pepaya</option><option value="Lainnya">Lainnya</option></select></div>
+<div><label>Varietas Pepaya</label><input id="newVariety" required></div>
+<div><label>Jarak Tanam</label><input id="newSpacing" required></div>
+<div><label>Jumlah Tanaman (Pohon)</label><input id="newPlants" type="number" min="0"></div>
+<div><label>Umur Tanaman (Bulan)</label><input id="newAge" type="number" min="0"></div>
+<div><label>Jadwal Tanam</label><input id="newPlanting" placeholder="Desember 2026"></div>
+<div><label>Perkiraan Panen Pertama</label><input id="newFirstHarvest" placeholder="September 2027"></div>
+<div><label>Perkiraan Panen Terakhir</label><input id="newLastHarvest" placeholder="Agustus 2029"></div>
+<div><label>Biaya Bibit (Rp)</label><input id="newSeedCost" type="number" min="0"></div>
+<div><label>pH Tanah</label><input id="newPH" type="number" min="0" max="14" step="0.1"></div>
+<div><label>Password Petani</label><input id="newPassword" type="password"><small class="muted">Kosongkan saat edit jika tidak mengganti password.</small></div>
+
+</div>
+
+<h3 class="subheading">B. Produksi dan Keuangan</h3>
+<div class="form-grid">
+<div><label>Produksi/Bulan (Kg)</label><input id="newProduction" type="number" min="0"></div>
+<div><label>Frekuensi Panen/Bulan</label><input id="newFrequency" type="number" min="0"></div>
+<div><label>Harga Jual/Kg (Rp)</label><input id="newPrice" type="number" min="0"></div>
+<div><label>HPP/Bulan (Rp)</label><input id="newHPP" type="number" min="0"></div>
+<div><label>Laba Kotor/Bulan (Rp)</label><input id="newProfit" type="number" min="0"></div>
+<div><label>Mitra Pemasaran</label><input id="newPartner" placeholder="EraFresh Samarinda"></div>
+<div><label>Status</label><select id="newStatus"><option>Aktif</option><option>Nonaktif</option><option>Persiapan Tanam</option></select></div>
+</div>
+
+<h3 class="subheading">C. Koordinat Peta</h3>
+<div class="form-grid">
+<div><label>Latitude</label><input id="newLat" type="number" step="any"></div>
+<div><label>Longitude</label><input id="newLng" type="number" step="any"></div>
+</div>
+
+<div class="form-actions">
+<button class="btn-primary" type="submit" id="saveButton">Simpan Data</button>
+<button class="btn-danger hidden" type="button" id="cancelButton" onclick="resetForm()">Batal Edit</button>
+</div>
+</form>
+</div>
+
+<!-- TABEL PETANI -->
+<div class="card">
+<h2>Daftar Data Petani</h2>
+<input class="search-box" id="searchFarmer" placeholder="Cari ID, nama, atau username..." oninput="renderFarmers()">
+
+<div class="table-wrap">
+<table>
+<thead>
+<tr>
+<th>ID</th><th>Username</th><th>Nama Petani</th><th>Wilayah</th>
+<th>Luas (Ha)</th><th>Komoditas</th><th>Varietas</th><th>Tanaman</th>
+<th>Status</th><th>Aksi</th>
+</tr>
+</thead>
+<tbody id="farmerTable"></tbody>
+</table>
+</div>
+</div>
+</section>
+
+<!-- PETA ADMIN -->
+<section id="adminMap" class="hidden">
+<div class="card">
+<h2>Peta Lahan Seluruh Petani</h2>
+<p class="muted" style="margin-bottom:15px">Peta petak berdasarkan GeoJSON hasil Google Earth Engine.</p>
+<div id="mapAdmin" class="map-area"></div>
+<div id="mapStatus" class="status">Menyiapkan peta...</div>
+<div class="legend-list" id="adminLegend"></div>
+</div>
+</section>
+
+<!-- PRODUKSI ADMIN -->
+<section id="adminProduction" class="hidden">
+
+<!-- GRAFIK OMZET -->
+<div class="chart-card">
+    <h2>📊 Grafik Omzet Bulanan Petani</h2>
+    <p class="muted">Perbandingan omzet berdasarkan produksi dan harga jual masing-masing petani.</p>
+
+    <div class="chart-container">
+        <canvas id="omzetChart"></canvas>
+    </div>
+
+    <div class="chart-summary">
+        <div class="chart-summary-item">
+            <small>Total Omzet Seluruh Petani</small>
+            <h3 id="chartTotalOmzet">Rp0</h3>
+        </div>
+
+        <div class="chart-summary-item">
+            <small>Omzet Tertinggi</small>
+            <h3 id="chartOmzetTertinggi">Rp0</h3>
+            <small id="chartNamaTertinggi">-</small>
+        </div>
+
+        <div class="chart-summary-item">
+            <small>Rata-rata Omzet Petani</small>
+            <h3 id="chartRataOmzet">Rp0</h3>
+        </div>
+    </div>
+</div>
+
+<!-- GRAFIK LABA -->
+<div class="chart-card">
+    <h2>📈 Grafik Laba Kotor Bulanan</h2>
+    <p class="muted">Perbandingan laba kotor bulanan berdasarkan data yang dimasukkan pada masing-masing petani.</p>
+
+    <div class="chart-container">
+        <canvas id="labaChart"></canvas>
+    </div>
+</div>
+
+<!-- TABEL PRODUKSI -->
+<div class="card">
+<h2>Rekap Produksi dan Keuangan Petani</h2>
+<div class="table-wrap">
+<table>
+<thead>
+<tr>
+<th>Petani</th><th>Produksi/Bulan</th><th>Frekuensi Panen</th>
+<th>Harga/Kg</th><th>HPP/Bulan</th><th>Laba Kotor/Bulan</th><th>Mitra</th>
+</tr>
+</thead>
+<tbody id="productionTable"></tbody>
+</table>
+</div>
+</div>
+
+</section>
+
+</main>
+
+<!-- DASHBOARD PETANI -->
+<main id="farmerPage" class="container hidden">
+
+<h2 style="margin-bottom:20px">Dashboard Petani</h2>
+
+<div class="card">
+<h2 id="welcomeName">Selamat Datang</h2>
+<p>Berikut informasi lahan dan usaha tani Anda.</p>
+</div>
+
+<div class="menu">
+<button class="active" onclick="showFarmerTab('profil',this)">Data Lahan</button>
+<button onclick="showFarmerTab('budidaya',this)">Budidaya</button>
+<button onclick="showFarmerTab('keuangan',this)">Produksi & Keuangan</button>
+<button onclick="showFarmerTab('peta',this)">Peta Lahan</button>
+<button onclick="showFarmerTab('analisis',this)">Analisis</button>
+<button onclick="showFarmerTab('solusi',this)">Solusi Pertanian</button>
+</div>
+
+<section id="farmerProfil">
+<div class="card">
+<h2>Identitas dan Informasi Lahan</h2>
+<div class="info-grid" id="farmerDetails"></div>
+</div>
+</section>
+
+<section id="farmerBudidaya" class="hidden">
+<div class="card">
+<h2>Informasi Budidaya Pepaya</h2>
+<div class="info-grid" id="cultivationDetails"></div>
+</div>
+</section>
+
+<section id="farmerKeuangan" class="hidden">
+<div class="card">
+<h2>Produksi dan Keuangan</h2>
+<div class="stats">
+<div class="stat"><h3 id="myProduction">0</h3><p>Produksi/Bulan (Kg)</p></div>
+<div class="stat"><h3 id="myHPP">Rp0</h3><p>HPP/Bulan</p></div>
+<div class="stat"><h3 id="myProfit">Rp0</h3><p>Laba Kotor/Bulan</p></div>
+</div>
+<div class="info-grid" id="financialDetails"></div>
+</div>
+</section>
+
+<section id="farmerPeta" class="hidden">
+<div class="card">
+<h2>Lokasi Lahan Saya</h2>
+<div id="mapFarmer" class="map-area"></div>
+<div id="farmerMapStatus" class="status">Menyiapkan peta...</div>
+</div>
+</section>
+
+<section id="farmerAnalisis" class="hidden">
+<div class="card">
+<h2>Analisis Lahan Pertanian</h2>
+<p class="muted">Analisis awal berdasarkan informasi yang tersedia, bukan pengganti uji laboratorium.</p>
+<div id="analysisContent" style="margin-top:18px"></div>
+</div>
+</section>
+
+<section id="farmerSolusi" class="hidden">
+<div class="card">
+<h2>Rekomendasi Pertanian</h2>
+<p class="muted">Rekomendasi awal yang perlu disesuaikan dengan kondisi lapangan.</p>
+<div id="solutionContent" style="margin-top:18px"></div>
+</div>
+</section>
+
+</main>
+
+<footer>AgriMap © 2026 | Sistem Informasi Pertanian</footer>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+<script>
+
+// ==========================================
+// 1. DATABASE LIMA PETANI
+// ==========================================
+
+const initialFarmers = [
+{
+id:"PET-001",kode:"P0",username:"minarko",name:"Pak Minarko",
+location:"Desa Lubuk Sawah, Kel. Mugirejo, Kec. Sungai Pinang",
+area:1.00,crop:"Pepaya",
+variety:"Pepaya California (Kalina IPB-9)",spacing:"2,5 m × 2,5 m",
+password:"Minarko2026",plants:1200,age:14,
+planting:"Desember 2026",firstHarvest:"September 2027",
+lastHarvest:"Agustus 2029",seedCost:6000000,ph:6.2,
+production:3000,frequency:4,price:14000,hpp:12000000,
+profit:30000000,partner:"EraFresh Samarinda",status:"Aktif",
+lat:-0.4821929089449843,lng:117.21030879383162
+},
+{
+id:"PET-002",kode:"P1",username:"fahid",name:"Pak Muhammad Fahid Zainal",
+location:"Kampung Tangguh, Kec. Samarinda Utara",
+area:0.50,crop:"Pepaya",variety:"Pepaya California",
+spacing:"3,0 m × 3,0 m",password:"Fahid2026",
+plants:450,age:10,planting:"Januari 2027",
+firstHarvest:"Oktober 2027",lastHarvest:"September 2029",
+seedCost:300000,ph:6.0,production:900,frequency:4,
+price:14000,hpp:4000000,profit:8600000,
+partner:"EraFresh Samarinda",status:"Aktif",
+lat:-0.4391374941285534,lng:117.19054065931742
+},
+{
+id:"PET-003",kode:"P2",username:"oktami",name:"Ibu Oktami",
+location:"Kampung Muang Dalam, Kel. Lempake, Kec. Samarinda Utara",
+area:0.75,crop:"Pepaya",
+variety:"Pepaya California & Pepaya Hawaii",
+spacing:"2,5 m × 2,5 m",password:"Oktami2026",
+plants:1000,age:16,planting:"Februari 2027",
+firstHarvest:"November 2027",lastHarvest:"Oktober 2029",
+seedCost:4500000,ph:5.8,production:2400,frequency:4,
+price:14000,hpp:9000000,profit:24600000,
+partner:"EraFresh Samarinda",status:"Aktif",
+lat:-0.3921709609519209,lng:117.1952119763634
+},
+{
+id:"PET-004",kode:"P3",username:"herman",name:"Pak Herman",
+location:"Wilayah Lingkar Pemasaran Pesisir, Samarinda",
+area:1.50,crop:"Pepaya",
+variety:"Pepaya Thailand (Bangkok) & California",
+spacing:"3,0 m × 3,5 m",password:"Herman2026",
+plants:1400,age:18,planting:"Maret 2027",
+firstHarvest:"Desember 2027",lastHarvest:"November 2029",
+seedCost:9000000,ph:6.3,production:4000,frequency:4,
+price:14000,hpp:17000000,profit:39000000,
+partner:"EraFresh Samarinda",status:"Aktif",
+lat:-0.4460997523991957,lng:117.21777410821537
+},
+{
+id:"PET-005",kode:"P4",username:"syarifah",name:"Ibu Syarifah Aida",
+location:"Kawasan Muang, Kel. Lempake, Kec. Samarinda Utara",
+area:0.50,crop:"Pepaya",variety:"Pepaya California",
+spacing:"2,5 m × 2,5 m",password:"Syarifah2026",
+plants:450,age:9,planting:"April 2027",
+firstHarvest:"Januari 2028",lastHarvest:"Desember 2029",
+seedCost:500000,ph:5.9,production:1200,frequency:4,
+price:14000,hpp:5000000,profit:11800000,
+partner:"EraFresh Samarinda",status:"Aktif",
+lat:-0.3993387189595678,lng:117.19766031765711
+}
+];
+
+// ==========================================
+// 2. PENYIMPANAN DATA
+// ==========================================
+
+const STORAGE_KEY = "agrimapFarmers";
+
+function loadFarmers(){
+    try{
+        const saved = JSON.parse(localStorage.getItem(STORAGE_KEY));
+        if(!Array.isArray(saved)) return initialFarmers.map(f=>({...f}));
+
+        return initialFarmers.map(original=>{
+            const old=saved.find(f=>f.id===original.id);
+            return old ? {...original,...old} : {...original};
+        }).concat(
+            saved.filter(f=>!initialFarmers.some(x=>x.id===f.id))
+        );
+    }catch(e){
+        console.error(e);
+        return initialFarmers.map(f=>({...f}));
+    }
+}
+
+let farmers=loadFarmers();
+let currentFarmer=null;
+let editingId=null;
+
+function saveData(){
+    localStorage.setItem(STORAGE_KEY,JSON.stringify(farmers));
+}
+
+// ==========================================
+// 3. FORMAT DAN PENGAMAN
+// ==========================================
+
+function escapeHTML(value){
+    return String(value??"").replace(/[&<>"']/g,c=>({
+        "&":"&amp;","<":"&lt;",">":"&gt;",
+        '"':"&quot;","'":"&#39;"
+    })[c]);
+}
+
+function rupiah(value){
+    return "Rp"+Number(value||0).toLocaleString("id-ID");
+}
+
+function numberFormat(value){
+    return Number(value||0).toLocaleString("id-ID");
+}
+
+function infoItem(label,value){
+    return `<div class="info-item">
+        <small>${escapeHTML(label)}</small>
+        <h3>${escapeHTML(value??"-")}</h3>
+    </div>`;
+}
+
+// ==========================================
+// 4. WARNA PETAK
+// ==========================================
+
+const parcelColors={
+    P0:"#e74c3c",
+    P1:"#3498db",
+    P2:"#2ecc71",
+    P3:"#e6ad25",
+    P4:"#9b59b6"
+};
+
+function getColor(kode){
+    return parcelColors[String(kode||"").toUpperCase()]||"#176b3a";
+}
+
+// ==========================================
+// 5. LOGIN
+// ==========================================
+
+document.getElementById("loginForm").addEventListener("submit",e=>{
+    e.preventDefault();
+    login();
+});
+
+function login(){
+
+    const username=document.getElementById("loginId").value.trim().toLowerCase();
+    const password=document.getElementById("loginPassword").value;
+
+    if(username==="admin"&&password==="admin123"){
+        document.getElementById("loginPage").classList.add("hidden");
+        document.getElementById("adminPage").classList.remove("hidden");
+        document.getElementById("logoutButton").classList.remove("hidden");
+        renderFarmers();
+        return;
+    }
+
+    const farmer=farmers.find(f=>
+        String(f.username).toLowerCase()===username&&f.password===password
+    );
+
+    if(farmer){
+        currentFarmer=farmer;
+        document.getElementById("loginPage").classList.add("hidden");
+        document.getElementById("farmerPage").classList.remove("hidden");
+        document.getElementById("logoutButton").classList.remove("hidden");
+        renderFarmerDashboard();
+        return;
+    }
+
+    alert("Username atau password salah!");
+}
+
+// ==========================================
+// 6. LOGOUT
+// ==========================================
+
+function logout(){
+    currentFarmer=null;
+    document.getElementById("adminPage").classList.add("hidden");
+    document.getElementById("farmerPage").classList.add("hidden");
+    document.getElementById("loginPage").classList.remove("hidden");
+    document.getElementById("logoutButton").classList.add("hidden");
+    document.getElementById("loginForm").reset();
+    resetForm();
+}
+
+// ==========================================
+// 7. FORM TAMBAH DAN EDIT
+// ==========================================
+
+const fields={
+    id:"newId",username:"newUsername",name:"newName",
+    location:"newLocation",area:"newArea",crop:"newCrop",
+    variety:"newVariety",spacing:"newSpacing",plants:"newPlants",
+    age:"newAge",planting:"newPlanting",firstHarvest:"newFirstHarvest",
+    lastHarvest:"newLastHarvest",seedCost:"newSeedCost",
+    ph:"newPH",production:"newProduction",frequency:"newFrequency",
+    price:"newPrice",hpp:"newHPP",profit:"newProfit",
+    partner:"newPartner",status:"newStatus",lat:"newLat",lng:"newLng"
+};
+
+function getInput(id){
+    return document.getElementById(id).value.trim();
+}
+
+document.getElementById("farmerForm").addEventListener("submit",e=>{
+    e.preventDefault();
+
+    const id=getInput("newId");
+    const username=getInput("newUsername");
+    const name=getInput("newName");
+    const area=Number(getInput("newArea"));
+
+    const latValue=getInput("newLat");
+    const lngValue=getInput("newLng");
+    const lat=latValue===""?null:Number(latValue);
+    const lng=lngValue===""?null:Number(lngValue);
+
+    if(!id||!username||!name||!Number.isFinite(area)||area<=0){
+        alert("Lengkapi data identitas dan luas lahan.");
+        return;
+    }
+
+    if((lat===null)!==(lng===null)){
+        alert("Latitude dan longitude harus diisi berpasangan.");
+        return;
+    }
+
+    if(lat!==null&&(!Number.isFinite(lat)||!Number.isFinite(lng)||
+        lat < -90||lat > 90||lng < -180||lng > 180)){
+        alert("Koordinat tidak valid.");
+        return;
+    }
+
+    if(farmers.some(f=>f.id.toLowerCase()===id.toLowerCase()&&f.id!==editingId)){
+        alert("ID petani sudah digunakan.");
+        return;
+    }
+
+    if(farmers.some(f=>f.username.toLowerCase()===username.toLowerCase()&&f.id!==editingId)){
+        alert("Username sudah digunakan.");
+        return;
+    }
+
+    const old=editingId?farmers.find(f=>f.id===editingId):null;
+    const password=getInput("newPassword");
+
+    if(!old&&!password){
+        alert("Masukkan password petani.");
+        return;
+    }
+
+    const farmer={};
+
+    Object.entries(fields).forEach(([key,inputId])=>{
+        const value=getInput(inputId);
+
+        if(["area","plants","age","seedCost","ph","production",
+            "frequency","price","hpp","profit"].includes(key)){
+            farmer[key]=value===""?0:Number(value);
+        }else if(key==="lat"||key==="lng"){
+            farmer[key]=value===""?null:Number(value);
+        }else{
+            farmer[key]=value;
+        }
+    });
+
+    farmer.password=password||old?.password||"";
+    farmer.kode=old?.kode||"";
+
+    if(editingId){
+        const index=farmers.findIndex(f=>f.id===editingId);
+        if(index===-1)return alert("Data tidak ditemukan.");
+        farmers[index]=farmer;
+
+        if(currentFarmer?.id===editingId) currentFarmer=farmer;
+
+        alert("Data petani berhasil diperbarui.");
+    }else{
+        farmers.push(farmer);
+        alert("Data petani berhasil ditambahkan.");
+    }
+
+    saveData();
+    resetForm();
+    renderFarmers();
+});
+
+function resetForm(){
+    document.getElementById("farmerForm").reset();
+    editingId=null;
+    document.getElementById("formTitle").innerText="Tambah Data Petani";
+    document.getElementById("saveButton").innerText="Simpan Data";
+    document.getElementById("cancelButton").classList.add("hidden");
+}
+
+// ==========================================
+// 8. TABEL PETANI DAN STATISTIK
+// ==========================================
+
+function renderFarmers(){
+
+    const search=(document.getElementById("searchFarmer")?.value||"").toLowerCase();
+
+    const filtered=farmers.filter(f=>
+        [f.id,f.username,f.name,f.location].some(v=>
+            String(v||"").toLowerCase().includes(search)
+        )
+    );
+
+    document.getElementById("farmerTable").innerHTML=filtered.map(f=>`
+        <tr>
+            <td>${escapeHTML(f.id)}</td>
+            <td>${escapeHTML(f.username)}</td>
+            <td>${escapeHTML(f.name)}</td>
+            <td>${escapeHTML(f.location)}</td>
+            <td>${numberFormat(f.area)} ha</td>
+            <td>${escapeHTML(f.crop)}</td>
+            <td>${escapeHTML(f.variety)}</td>
+            <td>${numberFormat(f.plants)} pohon</td>
+            <td><span class="badge">${escapeHTML(f.status)}</span></td>
+            <td>
+                <button class="btn-edit" onclick="editFarmer('${escapeHTML(f.id)}')">Edit</button>
+                <button class="btn-danger" onclick="deleteFarmer('${escapeHTML(f.id)}')">Hapus</button>
+            </td>
+        </tr>
+    `).join("");
+
+    document.getElementById("totalFarmers").innerText=farmers.length;
+
+    document.getElementById("totalArea").innerText=
+        farmers.reduce((s,f)=>s+Number(f.area||0),0).toFixed(2);
+
+    document.getElementById("totalCrops").innerText=
+        new Set(farmers.map(f=>f.crop).filter(Boolean)).size;
+
+    document.getElementById("totalPlants").innerText=
+        numberFormat(farmers.reduce((s,f)=>s+Number(f.plants||0),0));
+
+    document.getElementById("totalProduction").innerText=
+        numberFormat(farmers.reduce((s,f)=>s+Number(f.production||0),0));
+
+    document.getElementById("totalProfit").innerText=
+        rupiah(farmers.reduce((s,f)=>s+Number(f.profit||0),0));
+
+    renderProduction();
+
+    // Perbarui grafik jika halaman produksi sedang terbuka
+    if(!document.getElementById("adminProduction").classList.contains("hidden")){
+        renderOmzetChart();
+    }
+}
+
+function renderProduction(){
+    document.getElementById("productionTable").innerHTML=farmers.map(f=>`
+        <tr>
+            <td>${escapeHTML(f.name)}</td>
+            <td>${numberFormat(f.production)} kg</td>
+            <td>${numberFormat(f.frequency)} kali</td>
+            <td>${rupiah(f.price)}</td>
+            <td>${rupiah(f.hpp)}</td>
+            <td>${rupiah(f.profit)}</td>
+            <td>${escapeHTML(f.partner)}</td>
+        </tr>
+    `).join("");
+}
+
+// ==========================================
+// 9. GRAFIK OMZET DAN LABA KOTOR
+// ==========================================
+
+let omzetChart=null;
+let labaChart=null;
+
+function formatRupiahGrafik(nilai){
+    return new Intl.NumberFormat("id-ID",{
+        style:"currency",
+        currency:"IDR",
+        maximumFractionDigits:0
+    }).format(Number(nilai)||0);
+}
+
+function renderOmzetChart(){
+
+    const omzetCanvas=document.getElementById("omzetChart");
+    const labaCanvas=document.getElementById("labaChart");
+
+    if(!omzetCanvas||!labaCanvas)return;
+
+    // Nama petani
+    const labels=farmers.map(f=>f.name);
+
+    // Omzet = produksi x harga jual
+    const omzetData=farmers.map(f=>
+        Number(f.production||0)*Number(f.price||0)
+    );
+
+    // Laba kotor menggunakan nilai yang tersimpan
+    const labaData=farmers.map(f=>Number(f.profit||0));
+
+    // Perhitungan ringkasan omzet
+    const totalOmzet=omzetData.reduce((total,value)=>total+value,0);
+
+    const rataOmzet=farmers.length
+        ?totalOmzet/farmers.length
+        :0;
+
+    const indexTertinggi=omzetData.length
+        ?omzetData.indexOf(Math.max(...omzetData))
+        :-1;
+
+    const namaTertinggi=indexTertinggi>=0
+        ?farmers[indexTertinggi].name
+        :"-";
+
+    const omzetTertinggi=indexTertinggi>=0
+        ?omzetData[indexTertinggi]
+        :0;
+
+    // Tampilkan ringkasan
+    document.getElementById("chartTotalOmzet").textContent=
+        formatRupiahGrafik(totalOmzet);
+
+    document.getElementById("chartOmzetTertinggi").textContent=
+        formatRupiahGrafik(omzetTertinggi);
+
+    document.getElementById("chartNamaTertinggi").textContent=
+        namaTertinggi;
+
+    document.getElementById("chartRataOmzet").textContent=
+        formatRupiahGrafik(rataOmzet);
+
+    // Hapus grafik sebelumnya agar tidak bertumpuk
+    if(omzetChart)omzetChart.destroy();
+    if(labaChart)labaChart.destroy();
+
+    // GRAFIK OMZET
+    omzetChart=new Chart(omzetCanvas,{
+        type:"bar",
+
+        data:{
+            labels:labels,
+            datasets:[{
+                label:"Omzet Bulanan",
+                data:omzetData,
+                backgroundColor:[
+                    "#176b3a",
+                    "#3498db",
+                    "#e7a52e",
+                    "#9b59b6",
+                    "#e74c3c"
+                ],
+                borderRadius:7,
+                borderWidth:1
+            }]
+        },
+
+        options:{
+            responsive:true,
+            maintainAspectRatio:false,
+
+            plugins:{
+                legend:{
+                    display:true,
+                    position:"top"
+                },
+                tooltip:{
+                    callbacks:{
+                        label:context=>
+                            "Omzet: "+formatRupiahGrafik(context.raw)
+                    }
+                }
+            },
+
+            scales:{
+                y:{
+                    beginAtZero:true,
+                    ticks:{
+                        callback:value=>"Rp"+(value/1000000)+" juta"
+                    },
+                    title:{
+                        display:true,
+                        text:"Omzet (Rupiah)"
+                    }
+                },
+                x:{
+                    title:{
+                        display:true,
+                        text:"Nama Petani"
+                    }
+                }
+            }
+        }
+    });
+
+    // GRAFIK LABA KOTOR
+    labaChart=new Chart(labaCanvas,{
+        type:"bar",
+
+        data:{
+            labels:labels,
+            datasets:[{
+                label:"Laba Kotor Bulanan",
+                data:labaData,
+                backgroundColor:"#2e9d62",
+                borderRadius:7,
+                borderWidth:1
+            }]
+        },
+
+        options:{
+            responsive:true,
+            maintainAspectRatio:false,
+
+            plugins:{
+                legend:{
+                    display:true,
+                    position:"top"
+                },
+                tooltip:{
+                    callbacks:{
+                        label:context=>
+                            "Laba Kotor: "+formatRupiahGrafik(context.raw)
+                    }
+                }
+            },
+
+            scales:{
+                y:{
+                    beginAtZero:true,
+                    ticks:{
+                        callback:value=>"Rp"+(value/1000000)+" juta"
+                    },
+                    title:{
+                        display:true,
+                        text:"Laba Kotor (Rupiah)"
+                    }
+                },
+                x:{
+                    title:{
+                        display:true,
+                        text:"Nama Petani"
+                    }
+                }
+            }
+        }
+    });
+}
+
+// ==========================================
+// 10. EDIT DATA
+// ==========================================
+
+function editFarmer(id){
+
+    const f=farmers.find(x=>x.id===id);
+    if(!f)return;
+
+    editingId=id;
+
+    Object.entries(fields).forEach(([key,inputId])=>{
+        document.getElementById(inputId).value=f[key]??"";
+    });
+
+    document.getElementById("newPassword").value="";
+    document.getElementById("formTitle").innerText="Edit Data Petani";
+    document.getElementById("saveButton").innerText="Perbarui Data";
+    document.getElementById("cancelButton").classList.remove("hidden");
+
+    window.scrollTo({top:0,behavior:"smooth"});
+}
+
+// ==========================================
+// 11. HAPUS DATA
+// ==========================================
+
+function deleteFarmer(id){
+    if(!confirm("Yakin ingin menghapus data petani?"))return;
+
+    farmers=farmers.filter(f=>f.id!==id);
+
+    if(currentFarmer?.id===id)currentFarmer=null;
+
+    saveData();
+    renderFarmers();
+    alert("Data berhasil dihapus.");
+}
+
+// ==========================================
+// 12. MENU ADMIN
+// ==========================================
+
+function showAdminTab(tab,button){
+
+    document.getElementById("adminData").classList.toggle("hidden",tab!=="data");
+    document.getElementById("adminMap").classList.toggle("hidden",tab!=="peta");
+    document.getElementById("adminProduction").classList.toggle("hidden",tab!=="produksi");
+
+    document.querySelectorAll("#adminPage .menu button")
+        .forEach(b=>b.classList.remove("active"));
+
+    button.classList.add("active");
+
+    if(tab==="peta")setTimeout(renderAdminMap,200);
+
+    if(tab==="produksi"){
+        renderProduction();
+        setTimeout(()=>renderOmzetChart(),150);
+    }
+}
+
+// ==========================================
+// 13. LOAD GEOJSON
+// ==========================================
+
+let geoJsonData=null;
+
+async function getGeoJsonData(){
+
+    if(geoJsonData)return geoJsonData;
+
+    const response=await fetch("./data/petak_lahan_petani.geojson");
+
+    if(!response.ok)throw new Error("File petak_lahan_petani.geojson tidak ditemukan.");
+
+    const data=await response.json();
+
+    if(data.type!=="FeatureCollection"||!Array.isArray(data.features)){
+        throw new Error("Format GeoJSON tidak valid.");
+    }
+
+    geoJsonData=data;
+    return geoJsonData;
+}
+
+// ==========================================
+// 14. PENCARIAN PETAK
+// ==========================================
+
+function normalizeText(value){
+    return String(value??"").trim().toLowerCase().replace(/\s+/g," ");
+}
+
+function getFeatureKode(feature){
+    const p=feature.properties||{};
+    return p.kode??p.kode_petak??p.id_petak??p.KODE??"";
+}
+
+function getFeatureNama(feature){
+    const p=feature.properties||{};
+    return p.nama_petani??p.nama??p.pemilik??p.owner??"";
+}
+
+function findFarmerByFeature(feature){
+
+    const kode=normalizeText(getFeatureKode(feature));
+    const nama=normalizeText(getFeatureNama(feature));
+    const id=normalizeText(feature.properties?.id_anggota??feature.properties?.id_petani??"");
+
+    return farmers.find(f=>
+        (kode!==""&&normalizeText(f.kode)===kode)||
+        (nama!==""&&normalizeText(f.name)===nama)||
+        (id!==""&&normalizeText(f.id)===id)
+    )||null;
+}
+
+// ==========================================
+// 15. STYLE DAN POPUP PETAK
+// ==========================================
+
+function geoJsonStyle(feature){
+
+    const farmer=findFarmerByFeature(feature);
+    const kode=farmer?.kode||getFeatureKode(feature);
+    const color=getColor(kode);
+
+    return{
+        color:color,
+        weight:3,
+        fillColor:color,
+        fillOpacity:.45
+    };
+}
+
+function geoJsonPopup(feature){
+
+    const p=feature.properties||{};
+    const f=findFarmerByFeature(feature);
+
+    const luasHa=p.luas_ha??f?.area??"-";
+    const luasM2=p.luas_m2??(
+        f?Number(f.area)*10000:"-"
+    );
+
+    return `
+    <div style="min-width:230px">
+        <h3 style="color:#176b3a;margin-bottom:8px">
+            ${escapeHTML(f?.name||getFeatureNama(feature)||"Petak Lahan")}
+        </h3>
+        <hr style="margin-bottom:8px">
+        <b>ID Anggota:</b> ${escapeHTML(f?.id||p.id_anggota||"-")}<br>
+        <b>Kode Petak:</b> ${escapeHTML(getFeatureKode(feature)||"-")}<br>
+        <b>Luas:</b> ${escapeHTML(luasHa)} Ha<br>
+        <b>Luas m²:</b> ${typeof luasM2==="number"?numberFormat(luasM2):escapeHTML(luasM2)} m²<br>
+        <b>Username:</b> ${escapeHTML(f?.username||"-")}<br>
+        <b>Komoditas:</b> ${escapeHTML(f?.crop||"-")}<br>
+        <b>Varietas:</b> ${escapeHTML(f?.variety||"-")}<br>
+        <b>Produksi:</b> ${numberFormat(f?.production)} kg/bulan<br>
+        <b>pH Tanah:</b> ${escapeHTML(f?.ph??"-")}<br>
+        <b>Status:</b> ${escapeHTML(f?.status||"-")}
+    </div>`;
+}
+
+// ==========================================
+// 16. LEGENDA
+// ==========================================
+
+function renderLegend(){
+    document.getElementById("adminLegend").innerHTML=farmers.map(f=>`
+        <div class="legend-item">
+            <span class="legend-color" style="background:${getColor(f.kode)}"></span>
+            ${escapeHTML(f.name)}
+        </div>
+    `).join("");
+}
+
+// ==========================================
+// 17. PETA ADMIN
+// ==========================================
+
+let adminMap=null;
+let adminGeoJsonLayer=null;
+
+function createMap(elementId){
+    const map=L.map(elementId);
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",{
+        attribution:"&copy; OpenStreetMap"
+    }).addTo(map);
+    return map;
+}
+
+async function renderAdminMap(){
+
+    const status=document.getElementById("mapStatus");
+
+    if(!adminMap)adminMap=createMap("mapAdmin");
+
+    setTimeout(()=>adminMap.invalidateSize(),100);
+
+    try{
+
+        status.innerText="Memuat petak lahan...";
+
+        const data=await getGeoJsonData();
+
+        if(adminGeoJsonLayer)adminMap.removeLayer(adminGeoJsonLayer);
+
+        adminGeoJsonLayer=L.geoJSON(data,{
+            style:geoJsonStyle,
+            onEachFeature:(feature,layer)=>{
+                layer.bindPopup(geoJsonPopup(feature));
+            }
+        }).addTo(adminMap);
+
+        const bounds=adminGeoJsonLayer.getBounds();
+
+        if(bounds.isValid())adminMap.fitBounds(bounds,{padding:[30,30]});
+        else status.innerText="GeoJSON belum memiliki geometri yang dapat ditampilkan.";
+
+        const luas=data.features.reduce((sum,feature)=>{
+            const f=findFarmerByFeature(feature);
+            return sum+Number(feature.properties?.luas_ha??f?.area??0);
+        },0);
+
+        status.innerText=`Berhasil memuat ${data.features.length} petak. Total luas petak yang teridentifikasi: ${luas.toFixed(2)} hektare.`;
+
+        renderLegend();
+        setTimeout(()=>adminMap.invalidateSize(),200);
+
+    }catch(error){
+        console.error(error);
+        status.innerText="Gagal memuat peta: "+error.message;
+    }
+}
+
+// ==========================================
+// 18. DASHBOARD PETANI
+// ==========================================
+
+function renderFarmerDashboard(){
+
+    const f=currentFarmer;
+    if(!f)return;
+
+    document.getElementById("welcomeName").innerText="Selamat Datang, "+f.name;
+
+    const details=[
+        ["ID Anggota",f.id],
+        ["Username",f.username],
+        ["Nama Petani",f.name],
+        ["Wilayah Lahan",f.location],
+        ["Luas Lahan",f.area+" Hektare"],
+        ["Komoditas",f.crop],
+        ["Varietas",f.variety],
+        ["Jarak Tanam",f.spacing],
+        ["Status",f.status]
+    ];
+
+    document.getElementById("farmerDetails").innerHTML=
+        details.map(x=>infoItem(x[0],x[1])).join("");
+
+    const cultivation=[
+        ["Jadwal Tanam",f.planting],
+        ["Perkiraan Panen Pertama",f.firstHarvest],
+        ["Perkiraan Panen Terakhir",f.lastHarvest],
+        ["Jumlah Tanaman",numberFormat(f.plants)+" pohon"],
+        ["Umur Tanaman",f.age+" bulan"],
+        ["Biaya Bibit",rupiah(f.seedCost)],
+        ["pH Tanah",f.ph],
+        ["Jarak Tanam",f.spacing]
+    ];
+
+    document.getElementById("cultivationDetails").innerHTML=
+        cultivation.map(x=>infoItem(x[0],x[1])).join("");
+
+    document.getElementById("myProduction").innerText=numberFormat(f.production);
+    document.getElementById("myHPP").innerText=rupiah(f.hpp);
+    document.getElementById("myProfit").innerText=rupiah(f.profit);
+
+    const finance=[
+        ["Frekuensi Panen",f.frequency+" kali/bulan"],
+        ["Harga Jual per Kg",rupiah(f.price)],
+        ["Produksi per Bulan",numberFormat(f.production)+" kg"],
+        ["HPP per Bulan",rupiah(f.hpp)],
+        ["Laba Kotor per Bulan",rupiah(f.profit)],
+        ["Mitra Pemasaran",f.partner]
+    ];
+
+    document.getElementById("financialDetails").innerHTML=
+        finance.map(x=>infoItem(x[0],x[1])).join("");
+
+    renderAnalysis();
+    renderSolutions();
+}
+
+// ==========================================
+// 19. MENU PETANI
+// ==========================================
+
+function showFarmerTab(tab,button){
+
+    const tabs=["profil","budidaya","keuangan","peta","analisis","solusi"];
+
+    tabs.forEach(name=>{
+        const id="farmer"+name.charAt(0).toUpperCase()+name.slice(1);
+        document.getElementById(id).classList.toggle("hidden",name!==tab);
+    });
+
+    document.querySelectorAll("#farmerPage .menu button")
+        .forEach(b=>b.classList.remove("active"));
+
+    button.classList.add("active");
+
+    if(tab==="peta")setTimeout(renderFarmerMap,200);
+}
+
+// ==========================================
+// 20. PETA PETANI
+// ==========================================
+
+let farmerMap=null;
+let farmerGeoJsonLayer=null;
+
+async function renderFarmerMap(){
+
+    if(!currentFarmer)return;
+
+    const f=currentFarmer;
+    const status=document.getElementById("farmerMapStatus");
+
+    if(!farmerMap)farmerMap=createMap("mapFarmer");
+
+    setTimeout(()=>farmerMap.invalidateSize(),100);
+
+    try{
+
+        status.innerText="Memuat petak lahan Anda...";
+
+        const data=await getGeoJsonData();
+
+        const matchingFeatures=data.features.filter(feature=>{
+            const farmer=findFarmerByFeature(feature);
+            return farmer&&farmer.id===f.id;
+        });
+
+        if(farmerGeoJsonLayer){
+            farmerMap.removeLayer(farmerGeoJsonLayer);
+            farmerGeoJsonLayer=null;
+        }
+
+        if(matchingFeatures.length===0){
+
+            status.innerText="Petak lahan belum ditemukan. Periksa properties GeoJSON, khususnya kode P0-P4 atau ID PET-001 sampai PET-005.";
+
+            if(Number.isFinite(Number(f.lat))&&Number.isFinite(Number(f.lng))){
+                farmerMap.setView([Number(f.lat),Number(f.lng)],15);
+            }
+
+            return;
+        }
+
+        farmerGeoJsonLayer=L.geoJSON({
+            type:"FeatureCollection",
+            features:matchingFeatures
+        },{
+            style:geoJsonStyle,
+            onEachFeature:(feature,layer)=>{
+                layer.bindPopup(geoJsonPopup(feature));
+            }
+        }).addTo(farmerMap);
+
+        farmerMap.fitBounds(farmerGeoJsonLayer.getBounds(),{padding:[30,30]});
+
+        status.innerText="Petak lahan "+f.name+" berhasil ditampilkan.";
+
+        setTimeout(()=>farmerMap.invalidateSize(),200);
+
+    }catch(error){
+        console.error(error);
+        status.innerText="Gagal memuat peta: "+error.message;
+    }
+}
+
+// ==========================================
+// 21. ANALISIS LAHAN
+// ==========================================
+
+function renderAnalysis(){
+
+    const f=currentFarmer;
+    let phText="Belum tersedia";
+
+    if(Number.isFinite(Number(f.ph))){
+        if(f.ph<5.5)phText="Cenderung masam";
+        else if(f.ph<=7)phText="Berada pada kisaran agak masam hingga netral";
+        else phText="Cenderung alkalis";
+    }
+
+    document.getElementById("analysisContent").innerHTML=`
+
+        <div class="solution">
+            <h3>Identitas Komoditas</h3>
+            <p>Komoditas yang dibudidayakan adalah <b>${escapeHTML(f.crop)}</b>,
+            dengan varietas <b>${escapeHTML(f.variety)}</b>.</p>
+        </div>
+
+        <div class="solution">
+            <h3>Luas dan Populasi Tanaman</h3>
+            <p>Luas lahan ${numberFormat(f.area)} hektare dengan populasi
+            ${numberFormat(f.plants)} pohon.</p>
+        </div>
+
+        <div class="solution">
+            <h3>Karakteristik pH Tanah</h3>
+            <p>Nilai pH yang tercatat adalah <b>${escapeHTML(f.ph)}</b>.
+            Berdasarkan nilai tersebut, tanah ${escapeHTML(phText)}.
+            Interpretasi ini merupakan gambaran awal, bukan penilaian kesesuaian
+            tanah secara menyeluruh.</p>
+        </div>
+
+        <div class="solution">
+            <h3>Potensi Produksi</h3>
+            <p>Produksi yang tercatat sebesar
+            <b>${numberFormat(f.production)} kg/bulan</b>.</p>
+        </div>
+
+        <div class="solution">
+            <h3>Catatan Analisis</h3>
+            <p>Data pH belum menggambarkan seluruh kesuburan tanah.
+            Diperlukan pengujian bahan organik, unsur hara, tekstur,
+            drainase, dan kondisi tanah lainnya.</p>
+        </div>
+    `;
+}
+
+// ==========================================
+// 22. REKOMENDASI PERTANIAN
+// ==========================================
+
+function renderSolutions(){
+
+    const f=currentFarmer;
+
+    const solutions=[
+        {
+            title:"Pengelolaan Tanah",
+            description:"Lakukan pengamatan kondisi tanah dan pengujian pH secara berkala."
+        },
+        {
+            title:"Pengelolaan Air",
+            description:"Pastikan drainase berfungsi baik dan kebutuhan air tanaman terpenuhi."
+        },
+        {
+            title:"Pemupukan",
+            description:"Sesuaikan pemupukan dengan umur tanaman, kondisi lahan, dan hasil pengujian tanah."
+        },
+        {
+            title:"Pengendalian OPT",
+            description:"Lakukan pemantauan hama dan penyakit secara rutin serta terapkan pengendalian terpadu."
+        },
+        {
+            title:"Pemeliharaan Pepaya",
+            description:"Perhatikan sanitasi kebun, kondisi perakaran, pemeliharaan tanaman, dan penanganan buah."
+        },
+        {
+            title:"Pemasaran",
+            description:"Catat hasil panen, kualitas buah, dan distribusi kepada mitra pemasaran."
+        }
+    ];
+
+    document.getElementById("solutionContent").innerHTML=
+        solutions.map(s=>`
+            <div class="solution">
+                <h3>${escapeHTML(s.title)}</h3>
+                <p>${escapeHTML(s.description)}</p>
+            </div>
+        `).join("");
+}
+
+// ==========================================
+// 23. TAMPILAN AWAL
+// ==========================================
+
+renderFarmers();
+
+</script>
+</body>
+</html>
